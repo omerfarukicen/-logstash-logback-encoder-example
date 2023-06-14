@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+    <property resource="application.yml"/>
+    <springProperty scope="context" name="springAppName" source="spring.application.name"/>
+    <springProperty scope="context" name="springAppName" source="spring.application.name"/>
+    <springProperty scope="context" name="LOG_DIR" source="logback.path" defaultValue="./logs"/>
+    <!-- Console Log -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <layout class="tr.com.trs.logger.mask.MaskingPatternLayout">
+                <maskPattern>(\bpassword\S*)</maskPattern>
+                <maskPattern>(\boldpassword\S*)</maskPattern>
+                <pattern>${CONSOLE_LOG_PATTERN:-%black(%d{ISO8601}) %highlight(%-5level){TRACE=CYAN,
+                    DEBUG=CYAN,
+                    INFO=BLUE, WARN=YELLOW, ERROR=RED} %yellow(%C{1.}): %msg%n%throwable}
+                </pattern>
+            </layout>
+        </encoder>
+    </appender>
+
+    <!-- Application Log -->
+    <springProfile name="test | stage | prod">
+        <appender name="APPLICATION_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_DIR}/${springAppName:-}.json</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_DIR}/${springAppName:-}-%d{yyyy-MM-dd}.%i.json</fileNamePattern>
+                <maxFileSize>1GB</maxFileSize>
+                <maxHistory>3</maxHistory>
+                <totalSizeCap>3GB</totalSizeCap>
+            </rollingPolicy>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"application_name":"${springAppName}"}</customFields>
+                <includeContext>false</includeContext>
+                <jsonGeneratorDecorator class="net.logstash.logback.mask.MaskingJsonGeneratorDecorator">
+                    <values>
+                        (\bpassword\S*),
+                        (\boldPassword\S*),
+                        (\bparola\S*),
+                    </values>
+                    <paths>password</paths>
+                </jsonGeneratorDecorator>
+                <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                    <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                    <maxLength>2048</maxLength>
+                    <rootCauseFirst>true</rootCauseFirst>
+                    <inlineHash>false</inlineHash>
+                </throwableConverter>
+                <excludeMdcKeyName>LOG_DIR</excludeMdcKeyName>
+                <includeContext>false</includeContext>
+                <includeCallerData>true</includeCallerData>
+                <fieldNames>
+                    <levelValue>[ignore]</levelValue>
+                    <thread>[ignore]</thread>
+                    <version>[ignore]</version>
+                    <caller>trace</caller>
+                    <mdc>context</mdc>
+                    <!--                    <includeContext>false</includeContext>-->
+                </fieldNames>
+            </encoder>
+        </appender>
+    </springProfile>
+
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <springProfile name="test | stage | prod">
+        <root level="INFO">
+            <appender-ref ref="APPLICATION_LOG_FILE"/>
+        </root>
+    </springProfile>
+
+    <!--ROOT -->
+    <logger name="tr.com.trs" level="INFO"/>
+    <!-- Tomcat -->
+    <logger name="org.apache" level="INFO"/>
+    <logger name="org.apache.catalina.startup.DigesterFactory"
+            level="OFF"/>
+    <logger name="liquibase" additivity="false" level="ERROR"/>
+    <!--Spring -->
+    <logger name="org.springframework.ws.client.MessageTracing.sent" level="ERROR"/>
+    <logger name="org.springframework.ws.client.MessageTracing.received" level="ERROR"/>
+    <logger name="org.springframework.ws.server.MessageTracing." level="ERROR"/>
+    <logger name="org.springframework" level="INFO"/>
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.security" level="ERROR"/>
+    <logger name="org.springframework.cache" level="ERROR"/>
+    <!-- Kafka-->
+    <logger name="org.apache.kafka" level="ERROR"/>
+    <logger name="org.apache.kafka.clients" level="ERROR"/>
+    <logger name="org.apache.kafka.common.metrics" level="ERROR"/>
+    <logger name="org.apache.kafka.producer" level="ERROR"/>
+    <!-- Hibernate -->
+    <logger name="org.hibernate.validator" level="ERROR"/>
+    <logger name="org.hibernate" level="ERROR"/>
+    <logger name="org.hibernate.ejb.HibernatePersistence" level="ERROR"/>
+    <logger name="org.liquibase.core" level="ERROR"/>
+    <logger name="org.hibernate.SQL" level="ALL"/>
+</configuration>
